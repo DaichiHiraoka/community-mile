@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: community_mile
+      POSTGRES_USER: community
+      POSTGRES_PASSWORD: community
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  api:
+    image: community-mile-api:dev
+    working_dir: /workspace/apps/api
+    volumes:
+      - ../apps/api:/workspace/apps/api
+      - gradle-cache:/root/.gradle
+    command: ["bash", "-lc", "./gradlew bootRun"]
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/community_mile
+      SPRING_DATASOURCE_USERNAME: community
+      SPRING_DATASOURCE_PASSWORD: community
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      - db
+
+  admin-web:
+    image: community-mile-web:dev
+    working_dir: /workspace/apps/admin-web
+    volumes:
+      - ../apps/admin-web:/workspace/apps/admin-web
+      - node-cache:/root/.local/share/pnpm
+    command: ["bash", "-lc", "pnpm install && pnpm dev --host 0.0.0.0 --port 3000"]
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+
+  merchant-web:
+    image: community-mile-web:dev
+    working_dir: /workspace/apps/merchant-web
+    volumes:
+      - ../apps/merchant-web:/workspace/apps/merchant-web
+      - node-cache:/root/.local/share/pnpm
+    command: ["bash", "-lc", "pnpm install && pnpm dev --host 0.0.0.0 --port 3001"]
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8080
+
+  android-build:
+    image: community-mile-android:dev
+    profiles:
+      - android
+    working_dir: /workspace/apps/android-app
+    volumes:
+      - ../apps/android-app:/workspace/apps/android-app
+      - gradle-cache:/root/.gradle
+    command: ["bash", "-lc", "sleep infinity"]
+
+volumes:
+  db-data:
+  gradle-cache:
+  node-cache:
